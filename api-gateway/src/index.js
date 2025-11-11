@@ -614,8 +614,10 @@ app.use('/users', createProxyMiddleware({
  * /restaurants/{id}/menu:
  *   post:
  *     summary: Add menu item to restaurant
- *     description: Add a new menu item to an existing restaurant. Proxy to restaurant-service.
+ *     description: Add a new menu item to an existing restaurant. Proxy to restaurant-service. Requires admin authentication.
  *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -709,6 +711,191 @@ app.use('/users', createProxyMiddleware({
  *                 message:
  *                   type: string
  *                   example: "Validation error message"
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *       403:
+ *         description: Forbidden (insufficient permissions - admin required)
+ */
+/**
+ * @openapi
+ * /restaurants/{id}:
+ *   put:
+ *     summary: Update restaurant
+ *     description: Update restaurant information (name, address). Requires admin authentication. Proxy to restaurant-service.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Warung Sederhana Updated"
+ *               address:
+ *                 type: string
+ *                 example: "Jakarta"
+ *     responses:
+ *       200:
+ *         description: Restaurant updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *       404:
+ *         description: Restaurant not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (admin required)
+ */
+/**
+ * @openapi
+ * /restaurants/{id}:
+ *   delete:
+ *     summary: Delete restaurant
+ *     description: Delete a restaurant. Requires admin authentication. Proxy to restaurant-service.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     responses:
+ *       200:
+ *         description: Restaurant deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Restaurant deleted successfully"
+ *       404:
+ *         description: Restaurant not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (admin required)
+ */
+/**
+ * @openapi
+ * /restaurants/{id}/menu:
+ *   patch:
+ *     summary: Update menu item
+ *     description: Update an existing menu item in a restaurant. Requires admin authentication. Proxy to restaurant-service.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [itemId]
+ *             properties:
+ *               itemId:
+ *                 type: string
+ *                 example: "507f1f77bcf86cd799439012"
+ *                 description: Menu item ID to update
+ *               name:
+ *                 type: string
+ *                 example: "Nasi Goreng Spesial"
+ *               description:
+ *                 type: string
+ *                 example: "Extra pedas"
+ *               price:
+ *                 type: number
+ *                 minimum: 0
+ *                 example: 20000
+ *               isAvailable:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Menu item updated successfully
+ *       404:
+ *         description: Restaurant or menu item not found
+ *       400:
+ *         description: Bad request (validation error)
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (admin required)
+ */
+/**
+ * @openapi
+ * /restaurants/{id}/menu:
+ *   delete:
+ *     summary: Delete menu item
+ *     description: Delete a menu item from a restaurant. Requires admin authentication. Proxy to restaurant-service.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [itemId]
+ *             properties:
+ *               itemId:
+ *                 type: string
+ *                 example: "507f1f77bcf86cd799439012"
+ *                 description: Menu item ID to delete
+ *     responses:
+ *       200:
+ *         description: Menu item deleted successfully
+ *       404:
+ *         description: Restaurant or menu item not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (admin required)
  */
 // Admin protection for write operations on restaurants
 app.use('/restaurants', (req, res, next) => {
@@ -915,11 +1102,162 @@ app.use('/orders', authenticate, createProxyMiddleware({
 }));
 
 // Admin routes for orders (list all, update status)
-app.use('/admin/orders', authenticate, authorize(['admin']), createProxyMiddleware({
+/**
+ * @openapi
+ * /orders/admin:
+ *   get:
+ *     summary: Get all orders (Admin only)
+ *     description: Retrieve all orders with optional filters (status, restaurantId, userId). Requires admin authentication. Proxy to order-service. Endpoint: GET /orders/admin
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, paid, cancelled, completed]
+ *         description: Filter by order status
+ *         example: "pending"
+ *       - in: query
+ *         name: restaurantId
+ *         schema:
+ *           type: string
+ *         description: Filter by restaurant ID
+ *         example: "507f1f77bcf86cd799439012"
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter by user ID
+ *         example: "507f1f77bcf86cd799439011"
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       userId:
+ *                         type: string
+ *                       restaurantId:
+ *                         type: string
+ *                       restaurantName:
+ *                         type: string
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             menuId:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             quantity:
+ *                               type: number
+ *                             price:
+ *                               type: number
+ *                       totalPrice:
+ *                         type: number
+ *                       status:
+ *                         type: string
+ *                         enum: [pending, paid, cancelled, completed]
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *       403:
+ *         description: Forbidden (insufficient permissions - admin required)
+ */
+/**
+ * @openapi
+ * /orders/admin/{orderId}/status:
+ *   patch:
+ *     summary: Update order status (Admin only)
+ *     description: Update the status of an order. Requires admin authentication. Proxy to order-service.
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439014"
+ *         description: Order ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, paid, cancelled, completed]
+ *                 example: "paid"
+ *                 description: New order status
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     order:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                           example: "paid"
+ *       400:
+ *         description: Bad request (invalid order ID format or invalid status)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Status tidak valid"
+ *       404:
+ *         description: Order not found
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *       403:
+ *         description: Forbidden (insufficient permissions - admin required)
+ */
+app.use('/orders/admin', authenticate, authorize(['admin']), createProxyMiddleware({
   target: ORDER_SERVICE_TARGET,
   ...proxyOptions,
   pathRewrite: {
-    '^/admin/orders': '/admin/orders'
+    '^/orders/admin': '/orders/admin'
   }
 }));
 

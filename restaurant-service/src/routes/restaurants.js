@@ -157,6 +157,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Menu routes - Must be defined BEFORE /:id routes to avoid route conflicts
 /**
  * @openapi
  * /restaurants/{id}/menu:
@@ -262,6 +263,238 @@ router.post('/:id/menu', async (req, res) => {
     res.status(201).json(ok(r));
   } catch (e) {
     res.status(400).json(fail(e.message));
+  }
+});
+
+/**
+ * @openapi
+ * /restaurants/{id}/menu:
+ *   patch:
+ *     summary: Update menu item
+ *     description: Update an existing menu item in a restaurant. Requires admin authentication.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [itemId]
+ *             properties:
+ *               itemId:
+ *                 type: string
+ *                 example: "507f1f77bcf86cd799439012"
+ *                 description: Menu item ID to update
+ *               name:
+ *                 type: string
+ *                 example: "Nasi Goreng Spesial"
+ *               description:
+ *                 type: string
+ *                 example: "Extra pedas"
+ *               price:
+ *                 type: number
+ *                 minimum: 0
+ *                 example: 20000
+ *               isAvailable:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Menu item updated successfully
+ *       404:
+ *         description: Restaurant or menu item not found
+ *       400:
+ *         description: Bad request (validation error)
+ */
+/**
+ * PATCH /restaurants/:id/menu
+ * Update item menu
+ */
+router.patch('/:id/menu', async (req, res) => {
+  try {
+    const { itemId, name, description, price, isAvailable } = req.body;
+    if (!itemId) return res.status(400).json(fail('itemId is required'));
+
+    const r = await Restaurant.findById(req.params.id);
+    if (!r) return res.status(404).json(fail('Restaurant not found'));
+
+    const menuItem = r.menu.id(itemId);
+    if (!menuItem) return res.status(404).json(fail('Menu item not found'));
+
+    if (name !== undefined) menuItem.name = name;
+    if (description !== undefined) menuItem.description = description;
+    if (price !== undefined) menuItem.price = price;
+    if (isAvailable !== undefined) menuItem.isAvailable = isAvailable;
+
+    await r.save();
+    res.json(ok(r));
+  } catch (e) {
+    res.status(400).json(fail(e.message));
+  }
+});
+
+/**
+ * @openapi
+ * /restaurants/{id}/menu:
+ *   delete:
+ *     summary: Delete menu item
+ *     description: Delete a menu item from a restaurant. Requires admin authentication.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [itemId]
+ *             properties:
+ *               itemId:
+ *                 type: string
+ *                 example: "507f1f77bcf86cd799439012"
+ *                 description: Menu item ID to delete
+ *     responses:
+ *       200:
+ *         description: Menu item deleted successfully
+ *       404:
+ *         description: Restaurant or menu item not found
+ *       400:
+ *         description: Bad request (itemId required)
+ */
+/**
+ * DELETE /restaurants/:id/menu
+ * Hapus item menu
+ */
+router.delete('/:id/menu', async (req, res) => {
+  try {
+    const { itemId } = req.body;
+    if (!itemId) return res.status(400).json(fail('itemId is required'));
+
+    const r = await Restaurant.findById(req.params.id);
+    if (!r) return res.status(404).json(fail('Restaurant not found'));
+
+    const menuItem = r.menu.id(itemId);
+    if (!menuItem) return res.status(404).json(fail('Menu item not found'));
+
+    menuItem.deleteOne();
+    await r.save();
+    res.json(ok(r));
+  } catch (e) {
+    res.status(400).json(fail(e.message));
+  }
+});
+
+// Restaurant CRUD routes - Must be defined AFTER menu routes
+/**
+ * @openapi
+ * /restaurants/{id}:
+ *   put:
+ *     summary: Update restaurant
+ *     description: Update restaurant information (name, address). Requires admin authentication.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Warung Sederhana Updated"
+ *               address:
+ *                 type: string
+ *                 example: "Jakarta"
+ *     responses:
+ *       200:
+ *         description: Restaurant updated successfully
+ *       404:
+ *         description: Restaurant not found
+ *       400:
+ *         description: Bad request (validation error)
+ */
+/**
+ * PUT /restaurants/:id
+ * Update restoran
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const { name, address } = req.body;
+    const r = await Restaurant.findByIdAndUpdate(
+      req.params.id,
+      { name, address },
+      { new: true, runValidators: true }
+    );
+    if (!r) return res.status(404).json(fail('Restaurant not found'));
+    res.json(ok(r));
+  } catch (e) {
+    res.status(400).json(fail(e.message));
+  }
+});
+
+/**
+ * @openapi
+ * /restaurants/{id}:
+ *   delete:
+ *     summary: Delete restaurant
+ *     description: Delete a restaurant. Requires admin authentication.
+ *     tags: [Restaurants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "507f1f77bcf86cd799439011"
+ *         description: Restaurant ID (MongoDB ObjectId)
+ *     responses:
+ *       200:
+ *         description: Restaurant deleted successfully
+ *       404:
+ *         description: Restaurant not found
+ */
+/**
+ * DELETE /restaurants/:id
+ * Hapus restoran
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const r = await Restaurant.findByIdAndDelete(req.params.id);
+    if (!r) return res.status(404).json(fail('Restaurant not found'));
+    res.json(ok({ message: 'Restaurant deleted successfully' }));
+  } catch (e) {
+    res.status(500).json(fail(e.message));
   }
 });
 

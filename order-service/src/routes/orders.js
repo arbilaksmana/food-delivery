@@ -191,6 +191,38 @@ router.get("/user/:userId", async (req, res) => {
 });
 
 /**
+ * @openapi
+ * /orders/admin:
+ *   get:
+ *     summary: Get all orders (Admin only)
+ *     description: Retrieve all orders with optional filters (status, restaurantId, userId). Requires admin authentication.
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, paid, cancelled, completed]
+ *         description: Filter by order status
+ *       - in: query
+ *         name: restaurantId
+ *         schema:
+ *           type: string
+ *         description: Filter by restaurant ID
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter by user ID
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *       500:
+ *         description: Server error
+ */
+/**
  * Admin: list all orders with optional filters
  * Query: status, restaurantId, userId
  */
@@ -213,6 +245,46 @@ router.get("/admin", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /orders/admin/{orderId}/status:
+ *   patch:
+ *     summary: Update order status (Admin only)
+ *     description: Update the status of an order. Requires admin authentication.
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, paid, cancelled, completed]
+ *                 description: New order status
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ *       400:
+ *         description: Bad request (invalid order ID format or invalid status)
+ *       404:
+ *         description: Order not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (admin required)
+ */
 /**
  * Admin: update order status
  */
