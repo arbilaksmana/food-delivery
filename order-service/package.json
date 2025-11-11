@@ -1,0 +1,33 @@
+{
+  "name": "order-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed": "node seeds/seed.js"
+  },
+  "keywords": [
+    "order",
+    "food-delivery",
+    "microservice",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Order Service for Food Delivery System - Handles order creation and management via REST API",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.3",
+    "mongoose": "^8.0.0",
+    "morgan": "^1.10.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
