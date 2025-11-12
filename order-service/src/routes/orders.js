@@ -4,11 +4,13 @@ const mongoose = require("mongoose");
 const Order = require("../models/Order");
 
 const router = express.Router();
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
-const RESTAURANT_SERVICE_URL = process.env.RESTAURANT_SERVICE_URL || "http://localhost:3002";
+const USER_SERVICE_URL =
+  process.env.USER_SERVICE_URL || "http://localhost:3001";
+const RESTAURANT_SERVICE_URL =
+  process.env.RESTAURANT_SERVICE_URL || "http://localhost:3002";
 
-const ok = (data) => ({ status: 'success', data });
-const fail = (message) => ({ status: 'error', message });
+const ok = (data) => ({ status: "success", data });
+const fail = (message) => ({ status: "error", message });
 
 /**
  * @openapi
@@ -47,47 +49,62 @@ const fail = (message) => ({ status: 'error', message });
  */
 router.post("/", async (req, res) => {
   try {
-    const { userId, restaurantId, items } = req.body;
+    const { userId, restaurantId, items, paymentMethod, notes } = req.body;
 
     // Validasi request body
-    if (!userId || !restaurantId || !items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json(fail("userId, restaurantId, dan items (array) harus diisi"));
+    if (
+      !userId ||
+      !restaurantId ||
+      !items ||
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
+      return res
+        .status(400)
+        .json(fail("userId, restaurantId, dan items (array) harus diisi"));
     }
 
     // Validasi items
     for (const item of items) {
       if (!item.menuId || !item.quantity || item.quantity < 1) {
-        return res.status(400).json(fail("Setiap item harus memiliki menuId dan quantity >= 1"));
+        return res
+          .status(400)
+          .json(fail("Setiap item harus memiliki menuId dan quantity >= 1"));
       }
     }
 
     // 1️⃣ Validasi user
     try {
       const userRes = await axios.get(`${USER_SERVICE_URL}/users/${userId}`, {
-        timeout: 5000
+        timeout: 5000,
       });
-      
+
       // User-service response: {status: "success", data: {user: {...}}}
-      if (userRes.data?.status !== 'success' || !userRes.data?.data?.user) {
+      if (userRes.data?.status !== "success" || !userRes.data?.data?.user) {
         return res.status(404).json(fail("User tidak ditemukan"));
       }
     } catch (err) {
       if (err.response?.status === 404) {
         return res.status(404).json(fail("User tidak ditemukan"));
       }
-      console.error('Error calling user-service:', err.message);
-      return res.status(500).json(fail("Gagal memvalidasi user. Service tidak tersedia"));
+      console.error("Error calling user-service:", err.message);
+      return res
+        .status(500)
+        .json(fail("Gagal memvalidasi user. Service tidak tersedia"));
     }
 
     // 2️⃣ Ambil restoran & menu
     let restaurant;
     try {
-      const restoRes = await axios.get(`${RESTAURANT_SERVICE_URL}/restaurants/${restaurantId}`, {
-        timeout: 5000
-      });
-      
+      const restoRes = await axios.get(
+        `${RESTAURANT_SERVICE_URL}/restaurants/${restaurantId}`,
+        {
+          timeout: 5000,
+        }
+      );
+
       // Restaurant-service response: {status: "success", data: restaurant}
-      if (restoRes.data?.status !== 'success' || !restoRes.data?.data) {
+      if (restoRes.data?.status !== "success" || !restoRes.data?.data) {
         return res.status(404).json(fail("Restoran tidak ditemukan"));
       }
       restaurant = restoRes.data.data;
@@ -95,14 +112,16 @@ router.post("/", async (req, res) => {
       if (err.response?.status === 404) {
         return res.status(404).json(fail("Restoran tidak ditemukan"));
       }
-      console.error('Error calling restaurant-service:', err.message);
-      return res.status(500).json(fail("Gagal mengambil data restoran. Service tidak tersedia"));
+      console.error("Error calling restaurant-service:", err.message);
+      return res
+        .status(500)
+        .json(fail("Gagal mengambil data restoran. Service tidak tersedia"));
     }
 
     // 3️⃣ Build menu map (konversi _id ke string untuk matching)
     const menuMap = new Map();
     if (restaurant.menu && Array.isArray(restaurant.menu)) {
-      restaurant.menu.forEach(menu => {
+      restaurant.menu.forEach((menu) => {
         // Konversi _id ke string untuk matching (bisa ObjectId atau string)
         const menuIdStr = menu._id?.toString() || menu._id;
         menuMap.set(menuIdStr, menu);
@@ -115,15 +134,21 @@ router.post("/", async (req, res) => {
       // Konversi menuId ke string untuk matching
       const menuIdStr = item.menuId?.toString() || item.menuId;
       const menu = menuMap.get(menuIdStr);
-      
+
       if (!menu) {
-        return res.status(400).json(fail(`Menu dengan ID ${menuIdStr} tidak ditemukan di restoran ini`));
+        return res
+          .status(400)
+          .json(
+            fail(`Menu dengan ID ${menuIdStr} tidak ditemukan di restoran ini`)
+          );
       }
-      
+
       if (!menu.isAvailable) {
-        return res.status(400).json(fail(`Menu "${menu.name}" sedang tidak tersedia`));
+        return res
+          .status(400)
+          .json(fail(`Menu "${menu.name}" sedang tidak tersedia`));
       }
-      
+
       totalPrice += menu.price * item.quantity;
     }
 
@@ -131,24 +156,29 @@ router.post("/", async (req, res) => {
     const order = await Order.create({
       userId: new mongoose.Types.ObjectId(userId),
       restaurantId: new mongoose.Types.ObjectId(restaurantId),
-      items: items.map(item => ({
-        menuId: new mongoose.Types.ObjectId(item.menuId),
-        quantity: item.quantity
+      items: items.map((it) => ({
+        menuId: new mongoose.Types.ObjectId(it.menuId),
+        quantity: it.quantity,
       })),
       totalPrice,
-      status: "pending"
+      status: "pending",
+      // simpan agar konsisten dgn payment-service
+      paymentMethod, // akan diisi oleh frontend sesuai mapping
+      notes,
     });
 
     return res.status(201).json(ok({ order }));
   } catch (err) {
-    console.error('Error creating order:', err);
-    if (err.name === 'ValidationError') {
+    console.error("Error creating order:", err);
+    if (err.name === "ValidationError") {
       return res.status(400).json(fail(err.message));
     }
-    if (err.name === 'CastError') {
+    if (err.name === "CastError") {
       return res.status(400).json(fail("Format ID tidak valid"));
     }
-    return res.status(500).json(fail(err.message || "Terjadi kesalahan saat membuat order"));
+    return res
+      .status(500)
+      .json(fail(err.message || "Terjadi kesalahan saat membuat order"));
   }
 });
 
@@ -173,20 +203,42 @@ router.post("/", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // Validasi ObjectId format
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json(fail("Format user ID tidak valid"));
     }
 
-    const orders = await Order.find({ userId: new mongoose.Types.ObjectId(userId) })
+    const orders = await Order.find({
+      userId: new mongoose.Types.ObjectId(userId),
+    })
       .sort({ createdAt: -1 })
       .lean();
 
     return res.json(ok(orders));
   } catch (err) {
-    console.error('Error fetching orders:', err);
-    return res.status(500).json(fail(err.message || "Terjadi kesalahan saat mengambil order"));
+    console.error("Error fetching orders:", err);
+    return res
+      .status(500)
+      .json(fail(err.message || "Terjadi kesalahan saat mengambil order"));
+  }
+});
+
+router.patch("/:id/status", async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!order)
+      return res
+        .status(404)
+        .json({ status: "error", message: "Order not found" });
+    res.json({ status: "success", data: order });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
   }
 });
 
@@ -240,8 +292,10 @@ router.get("/admin", async (req, res) => {
     const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
     return res.json(ok(orders));
   } catch (err) {
-    console.error('Error fetching admin orders:', err);
-    return res.status(500).json(fail(err.message || "Terjadi kesalahan saat mengambil order"));
+    console.error("Error fetching admin orders:", err);
+    return res
+      .status(500)
+      .json(fail(err.message || "Terjadi kesalahan saat mengambil order"));
   }
 });
 
@@ -309,8 +363,12 @@ router.patch("/admin/:orderId/status", async (req, res) => {
     }
     return res.json(ok({ order: updated }));
   } catch (err) {
-    console.error('Error updating order status:', err);
-    return res.status(500).json(fail(err.message || "Terjadi kesalahan saat mengubah status order"));
+    console.error("Error updating order status:", err);
+    return res
+      .status(500)
+      .json(
+        fail(err.message || "Terjadi kesalahan saat mengubah status order")
+      );
   }
 });
 

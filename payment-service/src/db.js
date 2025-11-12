@@ -1,16 +1,13 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-async function connectDB(uri) {
+const DEFAULT_URI = "mongodb://127.0.0.1:27017/food_payment";
+
+async function connectDB(uri = process.env.MONGODB_URI || DEFAULT_URI) {
   try {
-    await mongoose.connect(uri, {
-      autoIndex: true,
-      serverSelectionTimeoutMS: 5000, // 5 seconds timeout for server selection
-      socketTimeoutMS: 45000, // 45 seconds socket timeout
-      connectTimeoutMS: 10000, // 10 seconds connection timeout
-    });
-    console.log('✅ MongoDB connected');
-  } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
+    await mongoose.connect(uri, { maxPoolSize: 10 });
+    console.log("✅ MongoDB connected (payment-service)");
+  } catch (e) {
+    console.error("❌ MongoDB connection error:", e.message);
     process.exit(1);
   }
 }

@@ -62,7 +62,7 @@ Aplikasi food delivery berbasis microservices dengan arsitektur modern menggunak
 
 ```
 ┌─────────────┐
-│   Frontend  │ (Next.js - Port 3004)
+│   Frontend  │ (Next.js - Port 3000)
 │  (Next.js)  │
 └──────┬──────┘
        │

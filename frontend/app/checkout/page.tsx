@@ -1,37 +1,45 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { useCart } from "@/contexts/cart"
-import { useAuth } from "@/contexts/auth"
-import { useToast } from "@/hooks/use-toast"
-import { useProtectedRoute } from "@/hooks/useProtectedRoute"
-import api from "@/lib/api"
-import { formatIDR } from "@/lib/format"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { useCart } from "@/contexts/cart";
+import { useAuth } from "@/contexts/auth";
+import { useToast } from "@/hooks/use-toast";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
+import api from "@/lib/api";
+import { formatIDR } from "@/lib/format";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function CheckoutPage() {
-  const router = useRouter()
-  const { loading: authLoading } = useProtectedRoute()
-  const { items, total, restaurantId, clear } = useCart()
-  const { user, token } = useAuth()
-  const { toast } = useToast()
-  const [submitting, setSubmitting] = useState(false)
-  const [notes, setNotes] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState("")
+  const router = useRouter();
+  const { loading: authLoading } = useProtectedRoute();
+  const { items, total, restaurantId, clear } = useCart();
+  const { user, token } = useAuth();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
 
+  const METHOD_MAP: Record<
+    string,
+    "cod" | "bank_transfer" | "wallet" | "qris"
+  > = {
+    cash: "cod",
+    transfer: "bank_transfer",
+    ewallet: "wallet",
+  };
 
   useEffect(() => {
     if (items.length === 0 && !authLoading) {
-      router.push("/restaurants")
+      router.push("/restaurants");
     }
-  }, [items.length, router, authLoading])
+  }, [items.length, router, authLoading]);
 
   const handleSubmitOrder = async () => {
     if (!token || !restaurantId || items.length === 0) {
@@ -39,44 +47,75 @@ export default function CheckoutPage() {
         title: "Error",
         description: "Data pesanan tidak lengkap",
         variant: "destructive",
-      })
-      return
+      });
+      return;
+    }
+    if (!paymentMethod) {
+      toast({
+        title: "Error",
+        description: "Pilih metode pembayaran",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-      setSubmitting(true)
+      setSubmitting(true);
+
+      // 1) create order
+      const storedUserId =
+        typeof window !== "undefined" ? localStorage.getItem("userId") : null;
       const orderItems = items.map((item) => ({
         menuId: item.menuId,
         quantity: item.quantity,
-      }))
-
-      const storedUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
-      await api.post("/orders", {
+      }));
+      const orderRes = await api.post("/orders", {
         userId: storedUserId || user?._id,
         restaurantId,
         items: orderItems,
         notes,
-        paymentMethod,
-      })
+        paymentMethod: METHOD_MAP[paymentMethod], // simpan juga di order
+      });
+
+      const order = orderRes.data?.data?.order;
+      const orderId: string = order?._id;
+      if (!orderId) throw new Error("Order ID tidak ditemukan");
+
+      const mapMethod = (v: string) =>
+        v === "cash"
+          ? "cod"
+          : v === "transfer"
+          ? "bank_transfer"
+          : v === "ewallet"
+          ? "wallet"
+          : "cod";
+
+      // 2) create payment (status: pending)
+      await api.post("/payments", {
+        orderId: order._id,
+        userId: order.userId,
+        amount: order.totalPrice,
+        method: mapMethod(paymentMethod),
+        currency: "IDR",
+      });
 
       toast({
-        title: "Berhasil!",
-        description: "Pesanan berhasil dibuat 🎉",
-      })
-
-      clear()
-      router.push("/orders")
-    } catch (error) {
-      const message = (error as any).response?.data?.message || "Gagal membuat pesanan"
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      })
+        title: "Berhasil",
+        description: "Pesanan & pembayaran dibuat (pending)",
+      });
+      clear();
+      router.push("/orders");
+    } catch (e: any) {
+      const msg =
+        e.response?.data?.message ||
+        e.response?.data?.error ||
+        e.message ||
+        "Gagal membuat pesanan";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   if (authLoading) {
     return (
@@ -85,7 +124,7 @@ export default function CheckoutPage() {
         <main className="flex-1" />
         <Footer />
       </div>
-    )
+    );
   }
 
   return (
@@ -102,25 +141,34 @@ export default function CheckoutPage() {
           Kembali ke Restoran
         </Link>
 
-        <h1 className="text-4xl font-bold mb-10 text-center text-[#2b2b2b]">Checkout Pesanan</h1>
+        <h1 className="text-4xl font-bold mb-10 text-center text-[#2b2b2b]">
+          Checkout Pesanan
+        </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Order Summary & Notes */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Ringkasan Pesanan</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">
+                  Ringkasan Pesanan
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.menuId} className="flex justify-between pb-4 border-b border-[#ffe5cc] last:border-0">
+                  <div
+                    key={item.menuId}
+                    className="flex justify-between pb-4 border-b border-[#ffe5cc] last:border-0"
+                  >
                     <div>
                       <p className="font-medium">{item.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {item.quantity} × {formatIDR(item.price)}
                       </p>
                     </div>
-                    <p className="font-semibold text-[#ff7b29]">{formatIDR(item.price * item.quantity)}</p>
+                    <p className="font-semibold text-[#ff7b29]">
+                      {formatIDR(item.price * item.quantity)}
+                    </p>
                   </div>
                 ))}
               </CardContent>
@@ -128,7 +176,9 @@ export default function CheckoutPage() {
 
             <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Catatan (Opsional)</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">
+                  Catatan (Opsional)
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
@@ -145,7 +195,9 @@ export default function CheckoutPage() {
           <div>
             <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm sticky top-4">
               <CardHeader>
-                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Total Pesanan</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">
+                  Total Pesanan
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -167,7 +219,9 @@ export default function CheckoutPage() {
 
                   {/* === Tambahkan bagian ini === */}
                   <div className="pt-4 border-t">
-                    <label className="block text-sm font-medium mb-2">Metode Pembayaran</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Metode Pembayaran
+                    </label>
                     <select
                       className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary"
                       value={paymentMethod}
@@ -176,7 +230,9 @@ export default function CheckoutPage() {
                       <option value="">-- Pilih Metode Pembayaran --</option>
                       <option value="cash">Tunai</option>
                       <option value="transfer">Transfer Bank</option>
-                      <option value="ewallet">E-Wallet (GoPay, OVO, DANA)</option>
+                      <option value="ewallet">
+                        E-Wallet (GoPay, OVO, DANA)
+                      </option>
                     </select>
                   </div>
                   {/* === End === */}
@@ -197,5 +253,5 @@ export default function CheckoutPage() {
 
       <Footer />
     </div>
-  )
+  );
 }
