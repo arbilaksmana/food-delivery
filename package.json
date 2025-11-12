@@ -1,0 +1,13 @@
+{
+  "name": "food-delivery",
+  "private": true,
+  "scripts": {
+    "start:all": "concurrently \"npm run start:services\" \"npm run start:gateway-delayed\" \"npm run start:frontend-delayed\"",
+    "start:services": "concurrently \"npm run dev --prefix user-service\" \"npm run dev --prefix restaurant-service\" \"npm run dev --prefix order-service\"",
+    "start:gateway-delayed": "powershell -Command \"Start-Sleep -Seconds 5; npm run dev --prefix api-gateway\"",
+    "start:frontend-delayed": "powershell -Command \"Start-Sleep -Seconds 10; npm run dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

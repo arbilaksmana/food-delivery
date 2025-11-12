@@ -56,10 +56,10 @@ export default function AdminOrdersPage() {
       const mDescMap: Record<string, string> = {}
       for (const r of list) {
         if (r?._id && r?.name) rMap[r._id] = r.name
-        ;(r?.menu || []).forEach((m: any) => {
-          if (m?._id && m?.name) mMap[m._id] = m.name
-          if (m?._id && m?.description) mDescMap[m._id] = m.description
-        })
+          ; (r?.menu || []).forEach((m: any) => {
+            if (m?._id && m?.name) mMap[m._id] = m.name
+            if (m?._id && m?.description) mDescMap[m._id] = m.description
+          })
       }
       setRestaurantNameMap(rMap)
       setMenuNameMap(mMap)
@@ -103,7 +103,7 @@ export default function AdminOrdersPage() {
       })
       const ordersData = res.data.data || []
       setOrders(ordersData)
-      
+
       // Fetch user names for all unique userIds
       const userIds = ordersData.map((o: AdminOrder) => o.userId).filter(Boolean) as string[]
       if (userIds.length > 0) {
@@ -164,8 +164,8 @@ export default function AdminOrdersPage() {
               return desc
             })
             .filter(Boolean) as string[] | undefined
-          const orderDescription = itemDescriptions && itemDescriptions.length > 0 
-            ? itemDescriptions.join(", ") 
+          const orderDescription = itemDescriptions && itemDescriptions.length > 0
+            ? itemDescriptions.join(", ")
             : undefined
 
           return (
@@ -179,7 +179,7 @@ export default function AdminOrdersPage() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">User</p>
                     <p className="font-medium truncate">
-                      {o.userId 
+                      {o.userId
                         ? (userNameMap[o.userId] || (loading ? "Loading..." : "-"))
                         : "-"}
                     </p>
@@ -205,9 +205,9 @@ export default function AdminOrdersPage() {
                         </li>
                       ))}
                     </ul>
-                    {orderDescription && (
+                    {/* {orderDescription && (
                       <p className="text-xs text-muted-foreground mt-2 italic">{orderDescription}</p>
-                    )}
+                    )} */}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Total</p>

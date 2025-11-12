@@ -1107,7 +1107,7 @@ app.use('/orders', authenticate, createProxyMiddleware({
  * /orders/admin:
  *   get:
  *     summary: Get all orders (Admin only)
- *     description: Retrieve all orders with optional filters (status, restaurantId, userId). Requires admin authentication. Proxy to order-service. Endpoint: GET /orders/admin
+ *     description: "Retrieve all orders with optional filters (status, restaurantId, userId). Requires admin authentication. Proxy to order-service. Endpoint: GET /orders/admin"
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
