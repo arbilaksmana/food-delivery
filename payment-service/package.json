@@ -1,0 +1,34 @@
+{
+  "name": "payment-service",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "seed": "node seeds/seed.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "payment",
+    "orders",
+    "food-delivery",
+    "microservice",
+    "api"
+  ],
+  "license": "ISC",
+  "description": "Payment Service - CRUD payment + status updates",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.2",
+    "morgan": "^1.10.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
