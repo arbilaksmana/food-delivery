@@ -24,6 +24,8 @@ export default function CheckoutPage() {
   const { toast } = useToast()
   const [submitting, setSubmitting] = useState(false)
   const [notes, setNotes] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState("")
+
 
   useEffect(() => {
     if (items.length === 0 && !authLoading) {
@@ -49,15 +51,17 @@ export default function CheckoutPage() {
       }))
 
       const storedUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
-      const response = await api.post("/orders", {
+      await api.post("/orders", {
         userId: storedUserId || user?._id,
         restaurantId,
         items: orderItems,
+        notes,
+        paymentMethod,
       })
 
       toast({
-        title: "Berhasil",
-        description: "Pesanan berhasil dibuat!",
+        title: "Berhasil!",
+        description: "Pesanan berhasil dibuat 🎉",
       })
 
       clear()
@@ -76,7 +80,7 @@ export default function CheckoutPage() {
 
   if (authLoading) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-[#fffaf5]">
         <Navbar />
         <main className="flex-1" />
         <Footer />
@@ -85,76 +89,103 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-[#fffaf5] to-[#fff0e0] text-[#2b2b2b]">
       <Navbar />
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-        <Link href="/restaurants" className="flex items-center gap-2 text-primary hover:underline mb-6">
+
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10">
+        {/* Back Link */}
+        <Link
+          href="/restaurants"
+          className="flex items-center gap-2 text-[#ff7b29] hover:text-[#e96b15] font-medium mb-6 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" />
-          Kembali
+          Kembali ke Restoran
         </Link>
 
-        <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+        <h1 className="text-4xl font-bold mb-10 text-center text-[#2b2b2b]">Checkout Pesanan</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Order Summary & Notes */}
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Ringkasan Pesanan</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Ringkasan Pesanan</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.menuId} className="flex justify-between pb-4 border-b last:border-0 last:pb-0">
+                  <div key={item.menuId} className="flex justify-between pb-4 border-b border-[#ffe5cc] last:border-0">
                     <div>
                       <p className="font-medium">{item.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {item.quantity} × {formatIDR(item.price)}
                       </p>
                     </div>
-                    <p className="font-semibold">{formatIDR(item.price * item.quantity)}</p>
+                    <p className="font-semibold text-[#ff7b29]">{formatIDR(item.price * item.quantity)}</p>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Catatan (Opsional)</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Catatan (Opsional)</CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
-                  placeholder="Tambahkan catatan untuk restoran (misal: tidak pakai sambal, dll)"
+                  placeholder="Contoh: jangan pakai sambal, saus terpisah, dll."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="h-32"
+                  className="h-32 focus-visible:ring-[#ff7b29]"
                 />
               </CardContent>
             </Card>
           </div>
 
+          {/* Right: Total Summary */}
           <div>
-            <Card className="sticky top-4">
+            <Card className="rounded-2xl border border-[#ffd8b3] shadow-md hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm sticky top-4">
               <CardHeader>
-                <CardTitle>Total Pesanan</CardTitle>
+                <CardTitle className="text-[#2b2b2b] text-lg font-semibold">Total Pesanan</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-2 text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-gray-500">Subtotal</span>
                     <span>{formatIDR(total())}</span>
                   </div>
                   <div className="flex justify-between mb-4 text-sm">
-                    <span className="text-muted-foreground">Ongkos Kirim</span>
+                    <span className="text-gray-500">Ongkos Kirim</span>
                     <span>{formatIDR(0)}</span>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-[#ffe5cc]">
                   <div className="flex justify-between text-lg font-bold mb-4">
                     <span>Total</span>
-                    <span className="text-primary">{formatIDR(total())}</span>
+                    <span className="text-[#ff7b29]">{formatIDR(total())}</span>
                   </div>
 
-                  <Button className="w-full" onClick={handleSubmitOrder} disabled={submitting || items.length === 0}>
+                  {/* === Tambahkan bagian ini === */}
+                  <div className="pt-4 border-t">
+                    <label className="block text-sm font-medium mb-2">Metode Pembayaran</label>
+                    <select
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <option value="">-- Pilih Metode Pembayaran --</option>
+                      <option value="cash">Tunai</option>
+                      <option value="transfer">Transfer Bank</option>
+                      <option value="ewallet">E-Wallet (GoPay, OVO, DANA)</option>
+                    </select>
+                  </div>
+                  {/* === End === */}
+
+                  <Button
+                    className="w-full bg-[#ff7b29] hover:bg-[#e96b15] text-white font-semibold py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                    onClick={handleSubmitOrder}
+                    disabled={submitting || items.length === 0}
+                  >
                     {submitting ? "Memproses..." : "Buat Pesanan"}
                   </Button>
                 </div>
@@ -163,6 +194,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   )
